@@ -1,9 +1,9 @@
-import type { PatientDetails, SelectedSlot, Service } from '../../types/booking'
+import type { PatientDetails, SelectedTimeSlot, Service } from '../../types/booking'
 import { formatAppointmentDate } from '../../utils/date'
 
 interface SuccessStepProps {
   service: Service
-  slot: SelectedSlot
+  slot: SelectedTimeSlot
   patientDetails: PatientDetails
   onRestart: () => void
 }

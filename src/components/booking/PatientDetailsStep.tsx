@@ -36,7 +36,7 @@ export function PatientDetailsStep({ initialValues, onBack, onSubmit }: PatientD
   return (
     <section className="space-y-8">
       <header className="space-y-3">
-        <p className="text-xs font-semibold tracking-[0.18em] text-amber-700 uppercase">Step 3 of 4</p>
+        <p className="text-xs font-semibold tracking-[0.18em] text-amber-700 uppercase">Step 4 of 4</p>
         <h2 className="text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl">Patient Details</h2>
         <p className="max-w-xl text-base leading-7 text-slate-600">
           Fill in your details to finalize the appointment request.
@@ -94,7 +94,7 @@ export function PatientDetailsStep({ initialValues, onBack, onSubmit }: PatientD
             type="submit"
             className="rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900"
           >
-            Confirm booking
+            Submit booking request
           </button>
         </div>
       </form>

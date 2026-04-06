@@ -31,9 +31,27 @@ export const services: Service[] = [
 ]
 
 export const professionals: Professional[] = [
-  { id: 'dr-carter', name: 'Dr. Carter', initials: 'DC', avatarClassName: 'bg-sky-600 text-white' },
-  { id: 'dr-kim', name: 'Dr. Kim', initials: 'DK', avatarClassName: 'bg-emerald-600 text-white' },
-  { id: 'dr-ross', name: 'Dr. Ross', initials: 'DR', avatarClassName: 'bg-violet-600 text-white' },
+  {
+    id: 'dr-carter',
+    name: 'Dr. Carter',
+    initials: 'DC',
+    role: 'General Practitioner',
+    avatarClassName: 'bg-sky-600 text-white',
+  },
+  {
+    id: 'dr-kim',
+    name: 'Dr. Kim',
+    initials: 'DK',
+    role: 'Cardiologist',
+    avatarClassName: 'bg-emerald-600 text-white',
+  },
+  {
+    id: 'dr-ross',
+    name: 'Dr. Ross',
+    initials: 'DR',
+    role: 'Pulmonologist',
+    avatarClassName: 'bg-violet-600 text-white',
+  },
 ]
 
 export function buildWeekSchedule(weekStart: Date, serviceId: string | null): DaySchedule[] {

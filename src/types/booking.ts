@@ -7,11 +7,55 @@ export interface Service {
   icon: string
 }
 
+export interface PublicServiceApiItem {
+  id: string
+  name: string
+  description: string
+  durationMinutes: number
+  price: number
+}
+
+export interface PublicServicesApiResponse {
+  data: PublicServiceApiItem[]
+}
+
+export interface PublicStaffApiItem {
+  id: string
+  firstName: string
+  lastName: string
+  role: string
+  avatarUrl: string | null
+}
+
+export interface PublicStaffApiResponse {
+  data: PublicStaffApiItem[]
+}
+
+export interface PublicAvailabilitySlotApiItem {
+  id?: string
+  time: string
+  isAvailable: boolean
+  professionalIds?: string[]
+}
+
+export interface PublicAvailabilityDayApiItem {
+  isoDate: string
+  dayShortLabel?: string
+  dayNumber?: number
+  slots: PublicAvailabilitySlotApiItem[]
+}
+
+export interface PublicAvailabilityApiResponse {
+  data: PublicAvailabilityDayApiItem[]
+}
+
 export interface Professional {
   id: string
   name: string
   initials: string
+  role: string
   avatarClassName: string
+  avatarUrl?: string | null
 }
 
 export interface TimeSlot {
@@ -28,7 +72,7 @@ export interface DaySchedule {
   slots: TimeSlot[]
 }
 
-export interface SelectedSlot {
+export interface SelectedTimeSlot {
   slotId: string
   isoDate: string
   dayShortLabel: string
