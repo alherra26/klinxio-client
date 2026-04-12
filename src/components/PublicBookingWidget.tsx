@@ -179,10 +179,18 @@ export function PublicBookingWidget() {
 
       const json = (await response.json()) as PublicStaffApiResponse
       const mappedStaff: Professional[] = (Array.isArray(json.data) ? json.data : []).map((provider, index) => {
-        const safeFirstName = typeof provider.firstName === 'string' ? provider.firstName : ''
-        const safeLastName = typeof provider.lastName === 'string' ? provider.lastName : ''
-        const fullName = `${safeFirstName} ${safeLastName}`.trim() || 'Provider'
-        const initials = `${safeFirstName.charAt(0)}${safeLastName.charAt(0)}`.toUpperCase() || 'PR'
+        const safeFirstName = typeof provider.firstName === 'string' ? provider.firstName.trim() : ''
+        const safeLastName = typeof provider.lastName === 'string' ? provider.lastName.trim() : ''
+        const safeName = typeof provider.name === 'string' ? provider.name.trim() : ''
+        const fullName = `${safeFirstName} ${safeLastName}`.trim() || safeName || 'Professional'
+        const initialsFromParts = `${safeFirstName.charAt(0)}${safeLastName.charAt(0)}`.toUpperCase()
+        const initialsFromName = safeName
+          .split(/\s+/)
+          .filter(Boolean)
+          .slice(0, 2)
+          .map((part) => part.charAt(0).toUpperCase())
+          .join('')
+        const initials = initialsFromParts || initialsFromName || 'PR'
         const safeRole = typeof provider.role === 'string' && provider.role.trim() ? provider.role : 'Professional'
         const safeId = typeof provider.id === 'string' && provider.id.trim() ? provider.id : `provider-${index + 1}`
 

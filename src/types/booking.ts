@@ -20,11 +20,12 @@ export interface PublicServicesApiResponse {
 }
 
 export interface PublicStaffApiItem {
-  id: string
-  firstName: string
-  lastName: string
-  role: string
-  avatarUrl: string | null
+  id?: string
+  name?: string
+  firstName?: string
+  lastName?: string
+  role?: string
+  avatarUrl?: string | null
 }
 
 export interface PublicStaffApiResponse {

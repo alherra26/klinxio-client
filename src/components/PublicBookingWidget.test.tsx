@@ -79,6 +79,36 @@ describe('PublicBookingWidget', () => {
     expect(screen.getByRole('button', { name: /retry/i })).toBeInTheDocument()
   })
 
+  it('shows provider name from name fallback and avoids Provider label', async () => {
+    server.use(
+      http.get('*/public/staff/:tenantId', () =>
+        HttpResponse.json({
+          data: [
+            {
+              id: 'provider-1',
+              name: 'Dra. Laura Mendez',
+              role: 'Dermatologist',
+              avatarUrl: null,
+            },
+          ],
+        }),
+      ),
+    )
+
+    const user = userEvent.setup()
+    renderWidget()
+
+    const serviceHeading = await screen.findByRole('heading', { name: /general consultation/i })
+    const serviceCard = serviceHeading.closest('article')
+    if (!serviceCard) {
+      throw new Error('Service card was not rendered.')
+    }
+    await user.click(within(serviceCard).getByRole('button', { name: /select/i }))
+
+    expect(await screen.findByRole('heading', { name: /dra\. laura mendez/i })).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: /^provider$/i })).not.toBeInTheDocument()
+  })
+
   it('submits booking and shows confirmation on 201', async () => {
     const user = userEvent.setup()
     renderWidget()
