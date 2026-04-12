@@ -45,7 +45,7 @@ export function ProfessionalSelectionStep({
   return (
     <section className="space-y-8">
       <header className="space-y-3">
-        <p className="text-xs font-semibold tracking-[0.18em] text-amber-700 uppercase">Step 2 of 4</p>
+        <p className="text-xs font-semibold tracking-[0.18em] text-amber-700 uppercase">Step 2 of 5</p>
         <h2 className="text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl">Select Professional</h2>
         <p className="max-w-2xl text-base leading-7 text-slate-600">
           Select your preferred professional or continue with no preference.

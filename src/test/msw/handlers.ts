@@ -52,29 +52,41 @@ export const handlers = [
 
     const requestUrl = new URL(request.url)
     const selectedProviderId = requestUrl.searchParams.get('providerId') ?? ''
+    const date = requestUrl.searchParams.get('date') ?? '2026-04-06'
+    const startTimes = date.endsWith('-06') ? ['09:00', '10:30'] : ['11:00']
 
     return HttpResponse.json({
-      data: [
-        {
-          isoDate: '2026-04-06T00:00:00.000Z',
-          dayShortLabel: 'Mon',
-          dayNumber: 6,
-          slots: [
-            {
-              id: 'slot-1',
-              time: '09:00',
-              isAvailable: true,
-              professionalIds: selectedProviderId ? [selectedProviderId] : ['provider-1', 'provider-2'],
-            },
-            {
-              id: 'slot-2',
-              time: '10:30',
-              isAvailable: false,
-              professionalIds: [],
-            },
-          ],
-        },
-      ],
+      data: {
+        date,
+        availableSlots: startTimes.map((startTime, index) => ({
+          slotId: `${selectedProviderId || 'any'}-${date}-${index + 1}`,
+          startTime,
+          endTime: index === 0 ? '09:30' : '11:00',
+          bufferEnd: index === 0 ? '09:40' : '11:10',
+        })),
+      },
     })
+  }),
+  http.post('*/public/appointments/:tenantId', async ({ request }) => {
+    await delay(100)
+
+    const payload = (await request.json()) as {
+      customer?: { name?: string; phone?: string }
+      startTime?: string
+    }
+
+    if (payload.customer?.name === 'Conflict Case') {
+      return HttpResponse.json({ message: 'Slot already taken' }, { status: 409 })
+    }
+
+    if (payload.customer?.name === 'Server Error') {
+      return HttpResponse.json({ message: 'Internal server error' }, { status: 500 })
+    }
+
+    if (!payload.customer?.name || !payload.customer?.phone || !payload.startTime) {
+      return HttpResponse.json({ message: 'Invalid payload' }, { status: 400 })
+    }
+
+    return HttpResponse.json({ status: 'confirmed' }, { status: 201 })
   }),
 ]

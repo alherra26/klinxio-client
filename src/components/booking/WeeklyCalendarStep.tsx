@@ -1,40 +1,45 @@
-import type { DaySchedule, Professional, SelectedTimeSlot } from '../../types/booking'
-import { AvatarStack } from './AvatarStack'
+import type { CalendarDay, TimeSlot } from '../../types/booking'
 
 interface WeeklyCalendarStepProps {
   weekLabel: string
-  schedule: DaySchedule[]
-  professionalsById: Record<string, Professional>
-  selectedTimeSlot: SelectedTimeSlot | null
+  weekDays: CalendarDay[]
+  selectedDate: string | null
+  availableSlots: TimeSlot[]
+  selectedTimeSlot: TimeSlot | null
   isLoadingAvailability: boolean
   availabilityError: string | null
+  slotConflictMessage: string | null
   onPreviousWeek: () => void
   onNextWeek: () => void
   onRetryLoadingAvailability: () => void
   onBackToProfessionals: () => void
-  onSelectTimeSlot: (slot: SelectedTimeSlot) => void
+  onSelectDate: (date: string) => void
+  onSelectTimeSlot: (slot: TimeSlot) => void
 }
 
 export function WeeklyCalendarStep({
   weekLabel,
-  schedule,
-  professionalsById,
+  weekDays,
+  selectedDate,
+  availableSlots,
   selectedTimeSlot,
   isLoadingAvailability,
   availabilityError,
+  slotConflictMessage,
   onPreviousWeek,
   onNextWeek,
   onRetryLoadingAvailability,
   onBackToProfessionals,
+  onSelectDate,
   onSelectTimeSlot,
 }: WeeklyCalendarStepProps) {
   return (
     <section className="space-y-8">
       <header className="space-y-4">
-        <p className="text-xs font-semibold tracking-[0.18em] text-amber-700 uppercase">Step 3 of 4</p>
+        <p className="text-xs font-semibold tracking-[0.18em] text-amber-700 uppercase">Step 3 of 5</p>
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
-            <h2 className="text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl">Select Date & Time</h2>
+            <h2 className="text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl">Select Day & Time</h2>
             <p className="mt-2 text-base text-slate-600">{weekLabel}</p>
           </div>
           <div className="flex items-center gap-2">
@@ -56,18 +61,41 @@ export function WeeklyCalendarStep({
         </div>
       </header>
 
+      {slotConflictMessage ? (
+        <article className="rounded-3xl border border-amber-200 bg-amber-50 p-6">
+          <p className="text-sm font-semibold text-amber-900">{slotConflictMessage}</p>
+        </article>
+      ) : null}
+
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-7">
+        {weekDays.map((day) => {
+          const isSelected = day.isoDate === selectedDate
+          return (
+            <button
+              key={day.isoDate}
+              type="button"
+              onClick={() => onSelectDate(day.isoDate)}
+              data-testid={`day-button-${day.isoDate}`}
+              className={`rounded-2xl border px-4 py-3 text-left transition ${
+                isSelected
+                  ? 'border-cyan-700 bg-cyan-50 ring-2 ring-cyan-500/30'
+                  : 'border-slate-200 bg-white hover:border-slate-300'
+              }`}
+            >
+              <p className="text-xs font-semibold tracking-[0.12em] text-slate-500 uppercase">{day.dayShortLabel}</p>
+              <p className="mt-1 text-2xl font-bold text-slate-900">{day.dayNumber}</p>
+            </button>
+          )
+        })}
+      </div>
+
       {isLoadingAvailability ? (
-        <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
           <p role="status" className="sr-only">
             Loading availability...
           </p>
-          {Array.from({ length: 3 }, (_, index) => (
-            <article key={index} className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-              <div className="h-6 w-1/3 animate-pulse rounded bg-slate-200" />
-              <div className="mt-4 h-8 w-full animate-pulse rounded-full bg-slate-200" />
-              <div className="mt-2 h-8 w-full animate-pulse rounded-full bg-slate-200" />
-              <div className="mt-2 h-8 w-full animate-pulse rounded-full bg-slate-200" />
-            </article>
+          {Array.from({ length: 8 }, (_, index) => (
+            <div key={index} className="h-10 animate-pulse rounded-xl bg-slate-200" />
           ))}
         </div>
       ) : null}
@@ -87,60 +115,31 @@ export function WeeklyCalendarStep({
       ) : null}
 
       {!isLoadingAvailability && !availabilityError ? (
-        <div className="overflow-x-auto rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
-          {schedule.length === 0 ? (
-            <article className="rounded-2xl bg-slate-50 p-6 text-center">
-              <h3 className="text-xl font-semibold text-slate-900">No time slots available</h3>
-              <p className="mt-2 text-sm text-slate-600">
-                Please try a different week or choose another professional.
-              </p>
-            </article>
+        <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+          {!selectedDate ? (
+            <p className="text-sm text-slate-700">Choose a day to load available time slots.</p>
+          ) : availableSlots.length === 0 ? (
+            <p className="text-sm text-slate-700">No slots available for this day. Please choose another date.</p>
           ) : (
-            <div className="grid min-w-[980px] grid-cols-7 gap-3">
-              {schedule.map((day) => (
-                <article key={day.isoDate} className="rounded-2xl bg-slate-50 p-3">
-                  <h3 className="mb-3 text-sm font-semibold text-slate-800">
-                    {day.dayShortLabel} {day.dayNumber}
-                  </h3>
-                  <div className="space-y-2">
-                    {day.slots.map((slot) => {
-                      const isSelected = selectedTimeSlot?.slotId === slot.id
-                      const slotProfessionals = slot.professionalIds
-                        .map((professionalId) => professionalsById[professionalId])
-                        .filter(Boolean)
-
-                      return (
-                        <button
-                          key={slot.id}
-                          type="button"
-                          disabled={!slot.isAvailable}
-                          onClick={() =>
-                            onSelectTimeSlot({
-                              slotId: slot.id,
-                              isoDate: day.isoDate,
-                              dayShortLabel: day.dayShortLabel,
-                              time: slot.time,
-                              professionalIds: slot.professionalIds,
-                            })
-                          }
-                          className={`flex w-full items-center justify-between rounded-full border px-2.5 py-1.5 text-xs font-semibold transition ${
-                            slot.isAvailable
-                              ? `bg-green-50 text-green-700 hover:bg-green-100 ${
-                                  isSelected ? 'border-green-600 ring-2 ring-green-300' : 'border-green-500'
-                                }`
-                              : 'cursor-not-allowed border-red-200 bg-red-50/50 text-red-300 line-through opacity-50'
-                          }`}
-                        >
-                          <span>{slot.time}</span>
-                          {slot.isAvailable && slotProfessionals.length > 0 ? (
-                            <AvatarStack professionals={slotProfessionals} />
-                          ) : null}
-                        </button>
-                      )
-                    })}
-                  </div>
-                </article>
-              ))}
+            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+              {availableSlots.map((slot) => {
+                const isSelected = selectedTimeSlot?.id === slot.id
+                return (
+                  <button
+                    key={slot.id}
+                    type="button"
+                    onClick={() => onSelectTimeSlot(slot)}
+                    data-testid={`slot-button-${slot.id}`}
+                    className={`rounded-xl border px-3 py-2 text-sm font-semibold transition ${
+                      isSelected
+                        ? 'border-green-700 bg-green-50 text-green-700 ring-2 ring-green-300'
+                        : 'border-green-500 bg-green-50 text-green-700 hover:bg-green-100'
+                    }`}
+                  >
+                    {slot.startTime}
+                  </button>
+                )
+              })}
             </div>
           )}
         </div>

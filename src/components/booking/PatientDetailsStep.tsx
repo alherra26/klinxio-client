@@ -1,15 +1,27 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import type { PatientDetails } from '../../types/booking'
 
 interface PatientDetailsStepProps {
   initialValues: PatientDetails
+  submitError: string | null
+  isSubmitting: boolean
   onBack: () => void
   onSubmit: (values: PatientDetails) => void
 }
 
-export function PatientDetailsStep({ initialValues, onBack, onSubmit }: PatientDetailsStepProps) {
+export function PatientDetailsStep({
+  initialValues,
+  submitError,
+  isSubmitting,
+  onBack,
+  onSubmit,
+}: PatientDetailsStepProps) {
   const [values, setValues] = useState<PatientDetails>(initialValues)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+
+  useEffect(() => {
+    setValues(initialValues)
+  }, [initialValues])
 
   const handleFieldChange = (field: keyof PatientDetails, value: string) => {
     setValues((currentValues) => ({ ...currentValues, [field]: value }))
@@ -18,51 +30,37 @@ export function PatientDetailsStep({ initialValues, onBack, onSubmit }: PatientD
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    const hasMissingValues = Object.values(values).some((value) => !value.trim())
-
-    if (hasMissingValues) {
+    if (!values.name.trim() || !values.phone.trim()) {
       setErrorMessage('Please complete all required fields.')
       return
     }
 
-    if (!values.email.includes('@')) {
-      setErrorMessage('Please enter a valid email address.')
-      return
-    }
-
-    onSubmit(values)
+    onSubmit({
+      name: values.name.trim(),
+      phone: values.phone.trim(),
+    })
   }
 
   return (
     <section className="space-y-8">
       <header className="space-y-3">
-        <p className="text-xs font-semibold tracking-[0.18em] text-amber-700 uppercase">Step 4 of 4</p>
-        <h2 className="text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl">Patient Details</h2>
+        <p className="text-xs font-semibold tracking-[0.18em] text-amber-700 uppercase">Step 4 of 5</p>
+        <h2 className="text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl">Contact Information</h2>
         <p className="max-w-xl text-base leading-7 text-slate-600">
-          Fill in your details to finalize the appointment request.
+          Enter your contact details to confirm the booking.
         </p>
       </header>
 
       <form
         onSubmit={handleSubmit}
-        className="grid gap-4 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:grid-cols-2"
+        className="grid gap-4 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm"
       >
         <label className="text-sm font-medium text-slate-700">
-          First Name
+          Name
           <input
             type="text"
-            value={values.firstName}
-            onChange={(event) => handleFieldChange('firstName', event.target.value)}
-            className="mt-2 w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-cyan-600 focus:ring-2 focus:ring-cyan-200"
-          />
-        </label>
-
-        <label className="text-sm font-medium text-slate-700">
-          Last Name
-          <input
-            type="text"
-            value={values.lastName}
-            onChange={(event) => handleFieldChange('lastName', event.target.value)}
+            value={values.name}
+            onChange={(event) => handleFieldChange('name', event.target.value)}
             className="mt-2 w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-cyan-600 focus:ring-2 focus:ring-cyan-200"
           />
         </label>
@@ -77,24 +75,16 @@ export function PatientDetailsStep({ initialValues, onBack, onSubmit }: PatientD
           />
         </label>
 
-        <label className="text-sm font-medium text-slate-700">
-          Email
-          <input
-            type="email"
-            value={values.email}
-            onChange={(event) => handleFieldChange('email', event.target.value)}
-            className="mt-2 w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-cyan-600 focus:ring-2 focus:ring-cyan-200"
-          />
-        </label>
+        {errorMessage ? <p className="text-sm font-medium text-red-600">{errorMessage}</p> : null}
+        {submitError ? <p className="text-sm font-medium text-red-600">{submitError}</p> : null}
 
-        {errorMessage ? <p className="sm:col-span-2 text-sm font-medium text-red-600">{errorMessage}</p> : null}
-
-        <div className="sm:col-span-2 flex flex-wrap items-center justify-end gap-3 pt-2">
+        <div className="flex flex-wrap items-center justify-end gap-3 pt-2">
           <button
             type="submit"
-            className="rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900"
+            disabled={isSubmitting}
+            className="rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900"
           >
-            Submit booking request
+            {isSubmitting ? 'Submitting...' : 'Submit booking request'}
           </button>
         </div>
       </form>

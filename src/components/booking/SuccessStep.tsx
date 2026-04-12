@@ -1,21 +1,22 @@
-import type { PatientDetails, SelectedTimeSlot, Service } from '../../types/booking'
+import type { PatientDetails, Service, TimeSlot } from '../../types/booking'
 import { formatAppointmentDate } from '../../utils/date'
 
 interface SuccessStepProps {
   service: Service
-  slot: SelectedTimeSlot
+  slot: TimeSlot
+  providerName: string
   patientDetails: PatientDetails
   onRestart: () => void
 }
 
-export function SuccessStep({ service, slot, patientDetails, onRestart }: SuccessStepProps) {
+export function SuccessStep({ service, slot, providerName, patientDetails, onRestart }: SuccessStepProps) {
   return (
     <section className="space-y-8">
       <header className="space-y-3">
-        <p className="text-xs font-semibold tracking-[0.18em] text-emerald-700 uppercase">Step 4 of 4</p>
+        <p className="text-xs font-semibold tracking-[0.18em] text-emerald-700 uppercase">Step 5 of 5</p>
         <h2 className="text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl">Booking Confirmed</h2>
         <p className="max-w-2xl text-base leading-7 text-slate-600">
-          Thank you {patientDetails.firstName}. Your appointment request has been successfully submitted.
+          Thank you {patientDetails.name}. Your appointment has been successfully confirmed.
         </p>
       </header>
 
@@ -27,16 +28,20 @@ export function SuccessStep({ service, slot, patientDetails, onRestart }: Succes
             <dd className="mt-1 text-sm font-semibold text-slate-900">{service.name}</dd>
           </div>
           <div>
+            <dt className="text-xs tracking-[0.1em] text-slate-500 uppercase">Professional</dt>
+            <dd className="mt-1 text-sm font-semibold text-slate-900">{providerName}</dd>
+          </div>
+          <div>
             <dt className="text-xs tracking-[0.1em] text-slate-500 uppercase">Date</dt>
-            <dd className="mt-1 text-sm font-semibold text-slate-900">{formatAppointmentDate(slot.isoDate)}</dd>
+            <dd className="mt-1 text-sm font-semibold text-slate-900">{formatAppointmentDate(slot.date)}</dd>
           </div>
           <div>
-            <dt className="text-xs tracking-[0.1em] text-slate-500 uppercase">Time</dt>
-            <dd className="mt-1 text-sm font-semibold text-slate-900">{slot.time}</dd>
+            <dt className="text-xs tracking-[0.1em] text-slate-500 uppercase">Start time</dt>
+            <dd className="mt-1 text-sm font-semibold text-slate-900">{slot.startTime}</dd>
           </div>
           <div>
-            <dt className="text-xs tracking-[0.1em] text-slate-500 uppercase">Contact</dt>
-            <dd className="mt-1 text-sm font-semibold text-slate-900">{patientDetails.email}</dd>
+            <dt className="text-xs tracking-[0.1em] text-slate-500 uppercase">Phone</dt>
+            <dd className="mt-1 text-sm font-semibold text-slate-900">{patientDetails.phone}</dd>
           </div>
         </dl>
       </article>

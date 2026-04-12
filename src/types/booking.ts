@@ -32,21 +32,18 @@ export interface PublicStaffApiResponse {
 }
 
 export interface PublicAvailabilitySlotApiItem {
-  id?: string
-  time: string
-  isAvailable: boolean
-  professionalIds?: string[]
-}
-
-export interface PublicAvailabilityDayApiItem {
-  isoDate: string
-  dayShortLabel?: string
-  dayNumber?: number
-  slots: PublicAvailabilitySlotApiItem[]
+  slotId?: string
+  startTime: string
+  endTime?: string | null
+  bufferEnd?: string | null
 }
 
 export interface PublicAvailabilityApiResponse {
-  data: PublicAvailabilityDayApiItem[]
+  data?: {
+    date?: string
+    availableSlots?: PublicAvailabilitySlotApiItem[]
+  }
+  availableSlots?: PublicAvailabilitySlotApiItem[]
 }
 
 export interface Professional {
@@ -60,29 +57,19 @@ export interface Professional {
 
 export interface TimeSlot {
   id: string
-  time: string
-  isAvailable: boolean
-  professionalIds: string[]
+  date: string
+  startTime: string
+  endTime: string | null
+  bufferEnd: string | null
 }
 
-export interface DaySchedule {
+export interface CalendarDay {
   isoDate: string
   dayShortLabel: string
   dayNumber: number
-  slots: TimeSlot[]
-}
-
-export interface SelectedTimeSlot {
-  slotId: string
-  isoDate: string
-  dayShortLabel: string
-  time: string
-  professionalIds: string[]
 }
 
 export interface PatientDetails {
-  firstName: string
-  lastName: string
+  name: string
   phone: string
-  email: string
 }

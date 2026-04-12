@@ -32,7 +32,7 @@ export function ServiceSelectionStep({
   return (
     <section className="space-y-8">
       <header className="space-y-3">
-        <p className="text-xs font-semibold tracking-[0.18em] text-amber-700 uppercase">Step 1 of 4</p>
+        <p className="text-xs font-semibold tracking-[0.18em] text-amber-700 uppercase">Step 1 of 5</p>
         <h1 className="text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl">Select your service</h1>
         <p className="max-w-2xl text-base leading-7 text-slate-600">
           Choose the clinical pathway that best suits your current health needs. Our specialists are
