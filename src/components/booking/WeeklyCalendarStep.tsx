@@ -33,6 +33,23 @@ export function WeeklyCalendarStep({
   onSelectDate,
   onSelectTimeSlot,
 }: WeeklyCalendarStepProps) {
+  const formatSlotTime = (time: string) => {
+    if (!time) {
+      return '--:--'
+    }
+
+    const [hourPart, minutePart] = time.split(':')
+    const hour = Number(hourPart)
+    const minute = Number(minutePart)
+    if (!Number.isFinite(hour) || !Number.isFinite(minute)) {
+      return time
+    }
+
+    const suffix = hour >= 12 ? 'PM' : 'AM'
+    const displayHour = hour % 12 === 0 ? 12 : hour % 12
+    return `${displayHour}:${String(minute).padStart(2, '0')} ${suffix}`
+  }
+
   return (
     <section className="space-y-8">
       <header className="space-y-4">
@@ -132,11 +149,11 @@ export function WeeklyCalendarStep({
                     data-testid={`slot-button-${slot.id}`}
                     className={`rounded-xl border px-3 py-2 text-sm font-semibold transition ${
                       isSelected
-                        ? 'border-green-700 bg-green-50 text-green-700 ring-2 ring-green-300'
-                        : 'border-green-500 bg-green-50 text-green-700 hover:bg-green-100'
+                        ? 'border-green-700 bg-green-50 text-slate-900 ring-2 ring-green-300'
+                        : 'border-green-500 bg-green-50 text-slate-900 hover:bg-green-100'
                     }`}
                   >
-                    {slot.startTime}
+                    <span className="inline-block text-slate-900">{formatSlotTime(slot.startTime)}</span>
                   </button>
                 )
               })}

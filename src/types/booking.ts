@@ -33,7 +33,8 @@ export interface PublicStaffApiResponse {
 
 export interface PublicAvailabilitySlotApiItem {
   slotId?: string
-  startTime: string
+  startTime?: string
+  start?: string
   endTime?: string | null
   bufferEnd?: string | null
 }

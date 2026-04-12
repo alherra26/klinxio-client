@@ -106,9 +106,9 @@ export function PublicBookingWidget() {
           : []
 
       return rawSlots.map((slot, index) => ({
-        id: slot.slotId ?? `${date}-${slot.startTime}-${index}`,
+        id: slot.slotId ?? `${date}-${slot.startTime ?? slot.start ?? 'slot'}-${index}`,
         date: payload.data?.date ?? date,
-        startTime: slot.startTime,
+        startTime: slot.startTime ?? slot.start ?? '',
         endTime: slot.endTime ?? null,
         bufferEnd: slot.bufferEnd ?? null,
       }))
