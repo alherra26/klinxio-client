@@ -79,6 +79,42 @@ describe('PublicBookingWidget', () => {
     expect(screen.getByRole('button', { name: /retry/i })).toBeInTheDocument()
   })
 
+  it('requests professionals with selected serviceId query parameter', async () => {
+    let requestedServiceId: string | null = null
+
+    server.use(
+      http.get('*/public/staff/:tenantId', ({ request }) => {
+        const requestUrl = new URL(request.url)
+        requestedServiceId = requestUrl.searchParams.get('serviceId')
+
+        return HttpResponse.json({
+          data: [
+            {
+              id: 'provider-1',
+              name: 'Evan Carter',
+              role: 'Dermatologist',
+              avatarUrl: null,
+            },
+          ],
+        })
+      }),
+    )
+
+    const user = userEvent.setup()
+    renderWidget()
+
+    const serviceHeading = await screen.findByRole('heading', { name: /general consultation/i })
+    const serviceCard = serviceHeading.closest('article')
+    if (!serviceCard) {
+      throw new Error('Service card was not rendered.')
+    }
+
+    await user.click(within(serviceCard).getByRole('button', { name: /select/i }))
+
+    expect(await screen.findByRole('heading', { name: /select professional/i })).toBeInTheDocument()
+    expect(requestedServiceId).toBe('general-consultation')
+  })
+
   it('submits booking and shows confirmation on 201', async () => {
     const user = userEvent.setup()
     renderWidget()

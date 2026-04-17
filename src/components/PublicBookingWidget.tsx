@@ -160,6 +160,12 @@ export function PublicBookingWidget() {
   }, [tenantId])
 
   const loadStaff = useCallback(async () => {
+    if (!selectedService?.id) {
+      setStaff([])
+      setStaffError(null)
+      return
+    }
+
     setIsLoadingStaff(true)
     setStaffError(null)
 
@@ -172,17 +178,29 @@ export function PublicBookingWidget() {
         throw new Error('Tenant is missing from URL or app context.')
       }
 
-      const response = await fetch(`${baseUrl}/public/staff/${encodeURIComponent(tenantId)}`)
+      const searchParams = new URLSearchParams({
+        serviceId: selectedService.id,
+      })
+      const staffUrl = `${baseUrl}/public/staff/${encodeURIComponent(tenantId)}?${searchParams.toString()}`
+      console.log('Staff fetch URL:', staffUrl)
+
+      const response = await fetch(staffUrl)
       if (!response.ok) {
         throw new Error(`Failed to fetch staff (${response.status}).`)
       }
 
       const json = (await response.json()) as PublicStaffApiResponse
       const mappedStaff: Professional[] = (Array.isArray(json.data) ? json.data : []).map((provider, index) => {
-        const safeFirstName = typeof provider.firstName === 'string' ? provider.firstName : ''
-        const safeLastName = typeof provider.lastName === 'string' ? provider.lastName : ''
-        const fullName = `${safeFirstName} ${safeLastName}`.trim() || 'Provider'
-        const initials = `${safeFirstName.charAt(0)}${safeLastName.charAt(0)}`.toUpperCase() || 'PR'
+        const safeName = typeof provider.name === 'string' ? provider.name.trim() : ''
+        const fullName = safeName || 'Provider'
+        const initials =
+          safeName
+            .split(/\s+/)
+            .filter(Boolean)
+            .slice(0, 2)
+            .map((part) => part.charAt(0))
+            .join('')
+            .toUpperCase() || 'PR'
         const safeRole = typeof provider.role === 'string' && provider.role.trim() ? provider.role : 'Professional'
         const safeId = typeof provider.id === 'string' && provider.id.trim() ? provider.id : `provider-${index + 1}`
 
@@ -209,7 +227,7 @@ export function PublicBookingWidget() {
     } finally {
       setIsLoadingStaff(false)
     }
-  }, [tenantId])
+  }, [selectedService, tenantId])
 
   const loadAvailability = useCallback(
     async (date: string, providerIdOverride?: string | null) => {
@@ -323,11 +341,15 @@ export function PublicBookingWidget() {
 
   useEffect(() => {
     void loadServices()
+  }, [loadServices])
+
+  useEffect(() => {
     void loadStaff()
-  }, [loadServices, loadStaff])
+  }, [loadStaff])
 
   const handleServiceSelection = (service: Service) => {
     setSelectedService(service)
+    setStaff([])
     setSelectedProviderId(null)
     setSelectedDate(null)
     setSelectedTimeSlot(null)

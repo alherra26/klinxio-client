@@ -21,8 +21,7 @@ export interface PublicServicesApiResponse {
 
 export interface PublicStaffApiItem {
   id: string
-  firstName: string
-  lastName: string
+  name: string
   role: string
   avatarUrl: string | null
 }

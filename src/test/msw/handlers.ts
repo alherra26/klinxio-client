@@ -25,22 +25,26 @@ export const handlers = [
       ],
     })
   }),
-  http.get('*/public/staff/:tenantId', async () => {
+  http.get('*/public/staff/:tenantId', async ({ request }) => {
     await delay(120)
+    const requestUrl = new URL(request.url)
+    const serviceId = requestUrl.searchParams.get('serviceId')
+
+    if (!serviceId) {
+      return HttpResponse.json({ message: 'serviceId query parameter is required' }, { status: 400 })
+    }
 
     return HttpResponse.json({
       data: [
         {
           id: 'provider-1',
-          firstName: 'Evan',
-          lastName: 'Carter',
+          name: 'Evan Carter',
           role: 'Dermatologist',
           avatarUrl: null,
         },
         {
           id: 'provider-2',
-          firstName: 'Mina',
-          lastName: 'Kim',
+          name: 'Mina Kim',
           role: 'General Practitioner',
           avatarUrl: null,
         },

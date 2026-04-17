@@ -21,16 +21,21 @@ export function ProfessionalSelectionStep({
   onRetryLoadingStaff,
   onBackToServices,
 }: ProfessionalSelectionStepProps) {
+  const shouldShowNoPreferenceOption = staff.length > 1
   const providerCards = [
-    {
-      id: NO_PREFERENCE_PROVIDER_ID,
-      name: 'Any Professional',
-      subtitle: 'No Preference',
-      initials: '',
-      avatarClassName: 'bg-slate-700 text-white',
-      avatarUrl: null as string | null,
-      isNoPreference: true,
-    },
+    ...(shouldShowNoPreferenceOption
+      ? [
+          {
+            id: NO_PREFERENCE_PROVIDER_ID,
+            name: 'Any Professional',
+            subtitle: 'No Preference',
+            initials: '',
+            avatarClassName: 'bg-slate-700 text-white',
+            avatarUrl: null as string | null,
+            isNoPreference: true,
+          },
+        ]
+      : []),
     ...staff.map((provider) => ({
       id: provider.id,
       name: provider.name,
@@ -82,7 +87,16 @@ export function ProfessionalSelectionStep({
         </article>
       ) : null}
 
-      {!isLoadingStaff && !staffError ? (
+      {!isLoadingStaff && !staffError && staff.length === 0 ? (
+        <article className="rounded-3xl border border-slate-200 bg-slate-50 p-6">
+          <h3 className="text-xl font-semibold text-slate-900">No professionals available</h3>
+          <p className="mt-2 text-sm text-slate-700">
+            No professionals are available for this service at the moment.
+          </p>
+        </article>
+      ) : null}
+
+      {!isLoadingStaff && !staffError && staff.length > 0 ? (
         <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
           {providerCards.map((provider) => {
             const isSelected =
