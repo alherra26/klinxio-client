@@ -1,15 +1,15 @@
-import type { PatientDetails, Service, TimeSlot } from '../../types/booking'
+import type { PatientDetails, SelectedAppointment, Service } from '../../types/booking'
 import { formatAppointmentDate } from '../../utils/date'
 
 interface SuccessStepProps {
   service: Service
-  slot: TimeSlot
+  appointment: SelectedAppointment
   providerName: string
   patientDetails: PatientDetails
   onRestart: () => void
 }
 
-export function SuccessStep({ service, slot, providerName, patientDetails, onRestart }: SuccessStepProps) {
+export function SuccessStep({ service, appointment, providerName, patientDetails, onRestart }: SuccessStepProps) {
   return (
     <section className="space-y-8">
       <header className="space-y-3">
@@ -33,11 +33,11 @@ export function SuccessStep({ service, slot, providerName, patientDetails, onRes
           </div>
           <div>
             <dt className="text-xs tracking-[0.1em] text-slate-500 uppercase">Date</dt>
-            <dd className="mt-1 text-sm font-semibold text-slate-900">{formatAppointmentDate(slot.date)}</dd>
+            <dd className="mt-1 text-sm font-semibold text-slate-900">{formatAppointmentDate(appointment.date)}</dd>
           </div>
           <div>
             <dt className="text-xs tracking-[0.1em] text-slate-500 uppercase">Start time</dt>
-            <dd className="mt-1 text-sm font-semibold text-slate-900">{slot.startTime}</dd>
+            <dd className="mt-1 text-sm font-semibold text-slate-900">{appointment.time}</dd>
           </div>
           <div>
             <dt className="text-xs tracking-[0.1em] text-slate-500 uppercase">Phone</dt>

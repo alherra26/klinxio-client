@@ -1,5 +1,12 @@
 import { delay, http, HttpResponse } from 'msw'
 
+function formatIsoDate(date: Date): string {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
 export const handlers = [
   http.get('*/public/services/:tenantId', async () => {
     await delay(150)
@@ -55,20 +62,37 @@ export const handlers = [
     await delay(120)
 
     const requestUrl = new URL(request.url)
-    const selectedProviderId = requestUrl.searchParams.get('providerId') ?? ''
-    const date = requestUrl.searchParams.get('date') ?? '2026-04-06'
-    const startTimes = date.endsWith('-06') ? ['09:00', '10:30'] : ['11:00']
+    const selectedProviderId = requestUrl.searchParams.get('providerId')
+    const serviceId = requestUrl.searchParams.get('serviceId')
+    const startDate = requestUrl.searchParams.get('startDate') ?? '2026-04-18'
+
+    if (!serviceId || !selectedProviderId) {
+      return HttpResponse.json({ message: 'serviceId and providerId query parameters are required' }, { status: 400 })
+    }
+
+    const baseDate = new Date(`${startDate}T00:00:00`)
+    const weekData: Record<string, Array<{ time: string; availableProviderIds: string[] }>> = {}
+
+    for (let index = 0; index < 7; index += 1) {
+      const isoDate = formatIsoDate(new Date(baseDate.getTime() + index * 24 * 60 * 60 * 1000))
+      const hasSlots = index % 2 === 0
+      weekData[isoDate] = hasSlots
+        ? [
+            {
+              time: '09:00',
+              availableProviderIds:
+                selectedProviderId === 'ANY' ? ['provider-1', 'provider-2'] : [selectedProviderId],
+            },
+            {
+              time: '10:30',
+              availableProviderIds: selectedProviderId === 'ANY' ? ['provider-1'] : [selectedProviderId],
+            },
+          ]
+        : []
+    }
 
     return HttpResponse.json({
-      data: {
-        date,
-        availableSlots: startTimes.map((startTime, index) => ({
-          slotId: `${selectedProviderId || 'any'}-${date}-${index + 1}`,
-          startTime,
-          endTime: index === 0 ? '09:30' : '11:00',
-          bufferEnd: index === 0 ? '09:40' : '11:10',
-        })),
-      },
+      weekData,
     })
   }),
   http.post('*/public/appointments/:tenantId', async ({ request }) => {

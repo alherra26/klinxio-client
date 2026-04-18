@@ -31,19 +31,12 @@ export interface PublicStaffApiResponse {
 }
 
 export interface PublicAvailabilitySlotApiItem {
-  slotId?: string
-  startTime?: string
-  start?: string
-  endTime?: string | null
-  bufferEnd?: string | null
+  time: string
+  availableProviderIds: string[]
 }
 
 export interface PublicAvailabilityApiResponse {
-  data?: {
-    date?: string
-    availableSlots?: PublicAvailabilitySlotApiItem[]
-  }
-  availableSlots?: PublicAvailabilitySlotApiItem[]
+  weekData: Record<string, PublicAvailabilitySlotApiItem[]>
 }
 
 export interface Professional {
@@ -61,6 +54,12 @@ export interface TimeSlot {
   startTime: string
   endTime: string | null
   bufferEnd: string | null
+}
+
+export interface SelectedAppointment {
+  date: string
+  time: string
+  assignedProviderId: string
 }
 
 export interface CalendarDay {

@@ -1,11 +1,10 @@
-import type { CalendarDay, TimeSlot } from '../../types/booking'
+import type { CalendarDay, PublicAvailabilitySlotApiItem, SelectedAppointment } from '../../types/booking'
 
 interface WeeklyCalendarStepProps {
   weekLabel: string
   weekDays: CalendarDay[]
-  selectedDate: string | null
-  availableSlots: TimeSlot[]
-  selectedTimeSlot: TimeSlot | null
+  weeklySlots: Record<string, PublicAvailabilitySlotApiItem[]>
+  selectedAppointment: SelectedAppointment | null
   isLoadingAvailability: boolean
   availabilityError: string | null
   slotConflictMessage: string | null
@@ -13,16 +12,14 @@ interface WeeklyCalendarStepProps {
   onNextWeek: () => void
   onRetryLoadingAvailability: () => void
   onBackToProfessionals: () => void
-  onSelectDate: (date: string) => void
-  onSelectTimeSlot: (slot: TimeSlot) => void
+  onSelectAppointment: (date: string, slot: PublicAvailabilitySlotApiItem) => void
 }
 
 export function WeeklyCalendarStep({
   weekLabel,
   weekDays,
-  selectedDate,
-  availableSlots,
-  selectedTimeSlot,
+  weeklySlots,
+  selectedAppointment,
   isLoadingAvailability,
   availabilityError,
   slotConflictMessage,
@@ -30,9 +27,19 @@ export function WeeklyCalendarStep({
   onNextWeek,
   onRetryLoadingAvailability,
   onBackToProfessionals,
-  onSelectDate,
-  onSelectTimeSlot,
+  onSelectAppointment,
 }: WeeklyCalendarStepProps) {
+  const now = new Date()
+  const currentDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+  const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
+  const currentWeekStartDate = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const currentWeekDay = currentWeekStartDate.getDay()
+  const currentWeekDiffFromMonday = currentWeekDay === 0 ? 6 : currentWeekDay - 1
+  currentWeekStartDate.setDate(currentWeekStartDate.getDate() - currentWeekDiffFromMonday)
+  const currentWeekStart = `${currentWeekStartDate.getFullYear()}-${String(currentWeekStartDate.getMonth() + 1).padStart(2, '0')}-${String(currentWeekStartDate.getDate()).padStart(2, '0')}`
+  const viewedWeekStart = weekDays[0]?.isoDate ?? currentWeekStart
+  const isPreviousWeekDisabled = viewedWeekStart <= currentWeekStart
+
   const formatSlotTime = (time: string) => {
     if (!time) {
       return '--:--'
@@ -63,7 +70,10 @@ export function WeeklyCalendarStep({
             <button
               type="button"
               onClick={onPreviousWeek}
-              className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900"
+              disabled={isPreviousWeekDisabled}
+              className={`rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 ${
+                isPreviousWeekDisabled ? 'cursor-not-allowed opacity-50' : 'hover:border-slate-400'
+              }`}
             >
               ← Previous
             </button>
@@ -83,28 +93,6 @@ export function WeeklyCalendarStep({
           <p className="text-sm font-semibold text-amber-900">{slotConflictMessage}</p>
         </article>
       ) : null}
-
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-7">
-        {weekDays.map((day) => {
-          const isSelected = day.isoDate === selectedDate
-          return (
-            <button
-              key={day.isoDate}
-              type="button"
-              onClick={() => onSelectDate(day.isoDate)}
-              data-testid={`day-button-${day.isoDate}`}
-              className={`rounded-2xl border px-4 py-3 text-left transition ${
-                isSelected
-                  ? 'border-cyan-700 bg-cyan-50 ring-2 ring-cyan-500/30'
-                  : 'border-slate-200 bg-white hover:border-slate-300'
-              }`}
-            >
-              <p className="text-xs font-semibold tracking-[0.12em] text-slate-500 uppercase">{day.dayShortLabel}</p>
-              <p className="mt-1 text-2xl font-bold text-slate-900">{day.dayNumber}</p>
-            </button>
-          )
-        })}
-      </div>
 
       {isLoadingAvailability ? (
         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
@@ -132,33 +120,73 @@ export function WeeklyCalendarStep({
       ) : null}
 
       {!isLoadingAvailability && !availabilityError ? (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-7">
+          {weekDays.map((day) => {
+            const daySlots = weeklySlots[day.isoDate] ?? []
+            const isPastDay = day.isoDate < currentDate
+            const isCurrentDay = day.isoDate === currentDate
+            const renderableSlots = isPastDay
+              ? []
+              : isCurrentDay
+                ? daySlots.filter((slot) => slot.time > currentTime)
+                : daySlots
+            const fallbackMessage = isPastDay || isCurrentDay ? 'Unavailable' : 'No slots available'
+
+            return (
+              <article
+                key={day.isoDate}
+                data-testid={`day-column-${day.isoDate}`}
+                className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
+              >
+                <p className="text-xs font-semibold tracking-[0.12em] text-slate-500 uppercase">{day.dayShortLabel}</p>
+                <p className="mt-1 text-2xl font-bold text-slate-900">{day.dayNumber}</p>
+
+                <div className="mt-4 space-y-2">
+                  {renderableSlots.length === 0 ? (
+                    <p className="text-xs text-slate-600">{fallbackMessage}</p>
+                  ) : (
+                    renderableSlots.map((slot, slotIndex) => {
+                      const isSelected =
+                        selectedAppointment?.date === day.isoDate && selectedAppointment.time === slot.time
+
+                      return (
+                        <button
+                          key={`${day.isoDate}-${slot.time}-${slotIndex}`}
+                          type="button"
+                          onClick={() => onSelectAppointment(day.isoDate, slot)}
+                          data-testid={`slot-button-${day.isoDate}-${slot.time}`}
+                          className={`w-full rounded-xl border px-3 py-2 text-sm font-semibold transition ${
+                            isSelected
+                              ? 'border-green-700 bg-green-50 text-slate-900 ring-2 ring-green-300'
+                              : 'border-green-500 bg-green-50 text-slate-900 hover:bg-green-100'
+                          }`}
+                        >
+                          <span className="inline-block text-slate-900">{formatSlotTime(slot.time)}</span>
+                        </button>
+                      )
+                    })
+                  )}
+                </div>
+              </article>
+            )
+          })}
+        </div>
+      ) : null}
+
+      {!isLoadingAvailability &&
+      !availabilityError &&
+      weekDays.every((day) => {
+        const daySlots = weeklySlots[day.isoDate] ?? []
+        if (day.isoDate < currentDate) {
+          return true
+        }
+        if (day.isoDate === currentDate) {
+          return daySlots.filter((slot) => slot.time > currentTime).length === 0
+        }
+        return daySlots.length === 0
+      }) ? (
         <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-          {!selectedDate ? (
-            <p className="text-sm text-slate-700">Choose a day to load available time slots.</p>
-          ) : availableSlots.length === 0 ? (
-            <p className="text-sm text-slate-700">No slots available for this day. Please choose another date.</p>
-          ) : (
-            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-              {availableSlots.map((slot) => {
-                const isSelected = selectedTimeSlot?.id === slot.id
-                return (
-                  <button
-                    key={slot.id}
-                    type="button"
-                    onClick={() => onSelectTimeSlot(slot)}
-                    data-testid={`slot-button-${slot.id}`}
-                    className={`rounded-xl border px-3 py-2 text-sm font-semibold transition ${
-                      isSelected
-                        ? 'border-green-700 bg-green-50 text-slate-900 ring-2 ring-green-300'
-                        : 'border-green-500 bg-green-50 text-slate-900 hover:bg-green-100'
-                    }`}
-                  >
-                    <span className="inline-block text-slate-900">{formatSlotTime(slot.startTime)}</span>
-                  </button>
-                )
-              })}
-            </div>
-          )}
+          <p className="text-sm text-slate-700">No slots available for this week. Please try another week.</p>
         </div>
       ) : null}
 

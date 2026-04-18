@@ -4,11 +4,12 @@ import type {
   CalendarDay,
   PatientDetails,
   Professional,
+  PublicAvailabilitySlotApiItem,
   PublicAvailabilityApiResponse,
   PublicStaffApiResponse,
   PublicServicesApiResponse,
+  SelectedAppointment,
   Service,
-  TimeSlot,
 } from '../types/booking'
 import { addDays, formatWeekRange, getStartOfWeek } from '../utils/date'
 import { getTenantIdFromLocation } from '../utils/tenant'
@@ -54,11 +55,10 @@ export function PublicBookingWidget() {
   const [availabilityError, setAvailabilityError] = useState<string | null>(null)
   const [bookingError, setBookingError] = useState<string | null>(null)
   const [slotConflictMessage, setSlotConflictMessage] = useState<string | null>(null)
-  const [availableSlots, setAvailableSlots] = useState<TimeSlot[]>([])
+  const [weeklySlots, setWeeklySlots] = useState<Record<string, PublicAvailabilitySlotApiItem[]>>({})
   const [selectedService, setSelectedService] = useState<Service | null>(null)
   const [selectedProviderId, setSelectedProviderId] = useState<string | null>(null)
-  const [selectedDate, setSelectedDate] = useState<string | null>(null)
-  const [selectedTimeSlot, setSelectedTimeSlot] = useState<TimeSlot | null>(null)
+  const [selectedAppointment, setSelectedAppointment] = useState<SelectedAppointment | null>(null)
   const [patientDetails, setPatientDetails] = useState<PatientDetails>(EMPTY_PATIENT_DETAILS)
 
   const tenantId = useMemo(() => {
@@ -90,31 +90,21 @@ export function PublicBookingWidget() {
   )
 
   const selectedProviderName = useMemo(() => {
-    if (!selectedProviderId) {
+    const finalProviderId = selectedAppointment?.assignedProviderId ?? selectedProviderId
+
+    if (!finalProviderId) {
       return 'Any Professional'
     }
 
-    return staff.find((provider) => provider.id === selectedProviderId)?.name ?? 'Selected Professional'
-  }, [selectedProviderId, staff])
+    return staff.find((provider) => provider.id === finalProviderId)?.name ?? 'Selected Professional'
+  }, [selectedAppointment, selectedProviderId, staff])
 
-  const mapAvailabilityResponse = useCallback(
-    (payload: PublicAvailabilityApiResponse, date: string): TimeSlot[] => {
-      const rawSlots = Array.isArray(payload.data?.availableSlots)
-        ? payload.data.availableSlots
-        : Array.isArray(payload.availableSlots)
-          ? payload.availableSlots
-          : []
-
-      return rawSlots.map((slot, index) => ({
-        id: slot.slotId ?? `${date}-${slot.startTime ?? slot.start ?? 'slot'}-${index}`,
-        date: payload.data?.date ?? date,
-        startTime: slot.startTime ?? slot.start ?? '',
-        endTime: slot.endTime ?? null,
-        bufferEnd: slot.bufferEnd ?? null,
-      }))
-    },
-    [],
-  )
+  const availabilityStartDate = useMemo(() => {
+    if (weekOffset === 0) {
+      return formatIsoDate(new Date())
+    }
+    return formatIsoDate(weekStart)
+  }, [weekOffset, weekStart])
 
   const loadServices = useCallback(async () => {
     setIsLoadingServices(true)
@@ -182,7 +172,6 @@ export function PublicBookingWidget() {
         serviceId: selectedService.id,
       })
       const staffUrl = `${baseUrl}/public/staff/${encodeURIComponent(tenantId)}?${searchParams.toString()}`
-      console.log('Staff fetch URL:', staffUrl)
 
       const response = await fetch(staffUrl)
       if (!response.ok) {
@@ -230,9 +219,9 @@ export function PublicBookingWidget() {
   }, [selectedService, tenantId])
 
   const loadAvailability = useCallback(
-    async (date: string, providerIdOverride?: string | null) => {
+    async (startDate: string, providerIdOverride?: string | null) => {
       if (!selectedService) {
-        setAvailableSlots([])
+        setWeeklySlots({})
         return
       }
 
@@ -248,9 +237,9 @@ export function PublicBookingWidget() {
           throw new Error('Tenant is missing from URL or app context.')
         }
 
-        const providerId = providerIdOverride ?? selectedProviderId ?? ''
+        const providerId = providerIdOverride ?? selectedProviderId ?? 'ANY'
         const searchParams = new URLSearchParams({
-          date,
+          startDate,
           providerId,
           serviceId: selectedService.id,
         })
@@ -263,22 +252,41 @@ export function PublicBookingWidget() {
         }
 
         const json = (await response.json()) as PublicAvailabilityApiResponse
-        const mappedAvailability = mapAvailabilityResponse(json, date)
-        setAvailableSlots(mappedAvailability)
-        setSelectedTimeSlot((currentTimeSlot) =>
-          currentTimeSlot && mappedAvailability.some((slot) => slot.id === currentTimeSlot.id)
-            ? currentTimeSlot
-            : null,
-        )
+        const nextWeeklySlots = Object.entries(json.weekData ?? {}).reduce<
+          Record<string, PublicAvailabilitySlotApiItem[]>
+        >((accumulator, [date, slots]) => {
+          accumulator[date] = (Array.isArray(slots) ? slots : []).map((slot) => ({
+            time: typeof slot.time === 'string' ? slot.time : '',
+            availableProviderIds: Array.isArray(slot.availableProviderIds)
+              ? slot.availableProviderIds.filter((providerIdValue) => typeof providerIdValue === 'string')
+              : [],
+          }))
+          return accumulator
+        }, {})
+
+        setWeeklySlots(nextWeeklySlots)
+        setSelectedAppointment((currentAppointment) => {
+          if (!currentAppointment) {
+            return null
+          }
+
+          const matchingSlot = (nextWeeklySlots[currentAppointment.date] ?? []).find(
+            (slot) => slot.time === currentAppointment.time,
+          )
+          if (!matchingSlot || !matchingSlot.availableProviderIds.includes(currentAppointment.assignedProviderId)) {
+            return null
+          }
+          return currentAppointment
+        })
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Unable to load availability at the moment.'
-        setAvailableSlots([])
+        setWeeklySlots({})
         setAvailabilityError(message)
       } finally {
         setIsLoadingAvailability(false)
       }
     },
-    [mapAvailabilityResponse, selectedProviderId, selectedService, tenantId],
+    [selectedProviderId, selectedService, tenantId],
   )
 
   const submitBooking = useCallback(
@@ -289,7 +297,7 @@ export function PublicBookingWidget() {
 
       try {
         const baseUrl = import.meta.env.VITE_API_URL
-        if (!baseUrl || !tenantId || !selectedService || !selectedTimeSlot || !selectedDate) {
+        if (!baseUrl || !tenantId || !selectedService || !selectedAppointment) {
           throw new Error('Booking flow is not fully initialized.')
         }
 
@@ -299,10 +307,10 @@ export function PublicBookingWidget() {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            providerId: selectedProviderId ?? '',
+            providerId: selectedAppointment.assignedProviderId,
             serviceId: selectedService.id,
-            date: selectedDate,
-            startTime: selectedTimeSlot.startTime,
+            date: selectedAppointment.date,
+            startTime: selectedAppointment.time,
             customer: {
               name: contact.name,
               phone: contact.phone,
@@ -317,10 +325,10 @@ export function PublicBookingWidget() {
         }
 
         if (response.status === 409) {
-          setSelectedTimeSlot(null)
+          setSelectedAppointment(null)
           setCurrentStep(2)
           setSlotConflictMessage('Slot no longer available. Please choose another time.')
-          await loadAvailability(selectedDate, selectedProviderId)
+          await loadAvailability(availabilityStartDate, selectedProviderId)
           return
         }
 
@@ -336,7 +344,7 @@ export function PublicBookingWidget() {
         setIsSubmittingBooking(false)
       }
     },
-    [loadAvailability, selectedDate, selectedProviderId, selectedService, selectedTimeSlot, tenantId],
+    [availabilityStartDate, loadAvailability, selectedAppointment, selectedProviderId, selectedService, tenantId],
   )
 
   useEffect(() => {
@@ -347,13 +355,19 @@ export function PublicBookingWidget() {
     void loadStaff()
   }, [loadStaff])
 
+  useEffect(() => {
+    if (currentStep !== 2 || !selectedService) {
+      return
+    }
+    void loadAvailability(availabilityStartDate)
+  }, [availabilityStartDate, currentStep, loadAvailability, selectedService])
+
   const handleServiceSelection = (service: Service) => {
     setSelectedService(service)
     setStaff([])
     setSelectedProviderId(null)
-    setSelectedDate(null)
-    setSelectedTimeSlot(null)
-    setAvailableSlots([])
+    setSelectedAppointment(null)
+    setWeeklySlots({})
     setWeekOffset(0)
     setBookingError(null)
     setSlotConflictMessage(null)
@@ -363,28 +377,29 @@ export function PublicBookingWidget() {
 
   const handleProviderSelection = (providerId: string | null) => {
     setSelectedProviderId(providerId)
-    setSelectedDate(null)
-    setSelectedTimeSlot(null)
-    setAvailableSlots([])
+    setSelectedAppointment(null)
+    setWeeklySlots({})
     setWeekOffset(0)
     setBookingError(null)
     setSlotConflictMessage(null)
     setCurrentStep(2)
   }
 
-  const handleDateSelection = (date: string) => {
-    setSelectedDate(date)
-    setSelectedTimeSlot(null)
-    setAvailableSlots([])
-    setAvailabilityError(null)
-    setSlotConflictMessage(null)
-    void loadAvailability(date)
-  }
+  const handleAppointmentSelection = (date: string, slot: PublicAvailabilitySlotApiItem) => {
+    const assignedProviderId = slot.availableProviderIds[0]
+    if (!assignedProviderId) {
+      setSlotConflictMessage('Selected slot is no longer assignable. Please choose another time.')
+      return
+    }
 
-  const handleTimeSlotSelection = (slot: TimeSlot) => {
-    setSelectedTimeSlot(slot)
+    setSelectedAppointment({
+      date,
+      time: slot.time,
+      assignedProviderId,
+    })
     setCurrentStep(3)
     setBookingError(null)
+    setSlotConflictMessage(null)
   }
 
   const handlePatientDetailsSubmit = (values: PatientDetails) => {
@@ -396,9 +411,8 @@ export function PublicBookingWidget() {
     setWeekOffset(0)
     setSelectedService(null)
     setSelectedProviderId(null)
-    setSelectedDate(null)
-    setSelectedTimeSlot(null)
-    setAvailableSlots([])
+    setSelectedAppointment(null)
+    setWeeklySlots({})
     setPatientDetails(EMPTY_PATIENT_DETAILS)
     setBookingError(null)
     setSlotConflictMessage(null)
@@ -445,36 +459,28 @@ export function PublicBookingWidget() {
             <WeeklyCalendarStep
               weekLabel={formatWeekRange(weekStart)}
               weekDays={weekDays}
-              selectedDate={selectedDate}
-              availableSlots={availableSlots}
-              selectedTimeSlot={selectedTimeSlot}
+              weeklySlots={weeklySlots}
+              selectedAppointment={selectedAppointment}
               isLoadingAvailability={isLoadingAvailability}
               availabilityError={availabilityError}
               slotConflictMessage={slotConflictMessage}
               onPreviousWeek={() => {
                 setWeekOffset((value) => value - 1)
-                setSelectedDate(null)
-                setSelectedTimeSlot(null)
-                setAvailableSlots([])
+                setSelectedAppointment(null)
                 setAvailabilityError(null)
                 setSlotConflictMessage(null)
               }}
               onNextWeek={() => {
                 setWeekOffset((value) => value + 1)
-                setSelectedDate(null)
-                setSelectedTimeSlot(null)
-                setAvailableSlots([])
+                setSelectedAppointment(null)
                 setAvailabilityError(null)
                 setSlotConflictMessage(null)
               }}
               onRetryLoadingAvailability={() => {
-                if (selectedDate) {
-                  void loadAvailability(selectedDate)
-                }
+                void loadAvailability(availabilityStartDate)
               }}
               onBackToProfessionals={() => setCurrentStep(1)}
-              onSelectDate={handleDateSelection}
-              onSelectTimeSlot={handleTimeSlotSelection}
+              onSelectAppointment={handleAppointmentSelection}
             />
           </div>
 
@@ -489,10 +495,10 @@ export function PublicBookingWidget() {
           </div>
 
           <div className={`w-full shrink-0 transition-opacity duration-500 ${currentStep === 4 ? 'opacity-100' : 'opacity-60'}`}>
-            {selectedService && selectedTimeSlot ? (
+            {selectedService && selectedAppointment ? (
               <SuccessStep
                 service={selectedService}
-                slot={selectedTimeSlot}
+                appointment={selectedAppointment}
                 providerName={selectedProviderName}
                 patientDetails={patientDetails}
                 onRestart={handleRestart}
