@@ -30,7 +30,7 @@ export function PatientDetailsStep({
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    if (!values.name.trim() || !values.phone.trim()) {
+    if (!values.name.trim() || !values.phone.trim() || !values.email.trim()) {
       setErrorMessage('Please complete all required fields.')
       return
     }
@@ -38,6 +38,7 @@ export function PatientDetailsStep({
     onSubmit({
       name: values.name.trim(),
       phone: values.phone.trim(),
+      email: values.email.trim(),
     })
   }
 
@@ -71,6 +72,16 @@ export function PatientDetailsStep({
             type="tel"
             value={values.phone}
             onChange={(event) => handleFieldChange('phone', event.target.value)}
+            className="mt-2 w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-cyan-600 focus:ring-2 focus:ring-cyan-200"
+          />
+        </label>
+
+        <label className="text-sm font-medium text-slate-700">
+          Email
+          <input
+            type="email"
+            value={values.email}
+            onChange={(event) => handleFieldChange('email', event.target.value)}
             className="mt-2 w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-cyan-600 focus:ring-2 focus:ring-cyan-200"
           />
         </label>

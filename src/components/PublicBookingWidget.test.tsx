@@ -1,7 +1,7 @@
-import { render, screen, within } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { TenantProvider } from '../context/TenantProvider'
 import { server } from '../test/msw/server'
 import { PublicBookingWidget } from './PublicBookingWidget'
@@ -20,6 +20,10 @@ function renderWidget() {
     </TenantProvider>,
   )
 }
+
+afterEach(() => {
+  vi.restoreAllMocks()
+})
 
 async function goToContactStep(user: ReturnType<typeof userEvent.setup>) {
   const serviceHeading = await screen.findByRole('heading', { name: /general consultation/i })
@@ -168,7 +172,15 @@ describe('PublicBookingWidget', () => {
   })
 
   it('submits booking with the assigned provider from selected slot when ANY is selected', async () => {
-    let submittedProviderId: string | null = null
+    let submittedPayload:
+      | {
+          providerId: string
+          serviceId: string
+          date: string
+          time: string
+          customer: { name: string; phone: string; email: string }
+        }
+      | null = null
     const todayIsoDate = formatIsoDate(new Date())
     const selectableTime = '23:59'
 
@@ -181,8 +193,13 @@ describe('PublicBookingWidget', () => {
         }),
       ),
       http.post('*/public/appointments/:tenantId', async ({ request }) => {
-        const payload = (await request.json()) as { providerId?: string }
-        submittedProviderId = payload.providerId ?? null
+        submittedPayload = (await request.json()) as {
+          providerId: string
+          serviceId: string
+          date: string
+          time: string
+          customer: { name: string; phone: string; email: string }
+        }
         return HttpResponse.json({ status: 'confirmed' }, { status: 201 })
       }),
     )
@@ -193,10 +210,21 @@ describe('PublicBookingWidget', () => {
 
     await user.type(screen.getByLabelText(/name/i), 'Jane Doe')
     await user.type(screen.getByLabelText(/phone/i), '+1 555 111 222')
+    await user.type(screen.getByLabelText(/email/i), 'jane@example.com')
     await user.click(screen.getByRole('button', { name: /submit booking request/i }))
 
-    expect(await screen.findByRole('heading', { name: /booking confirmed/i })).toBeInTheDocument()
-    expect(submittedProviderId).toBe('provider-2')
+    expect(await screen.findByRole('heading', { name: /booking requested/i })).toBeInTheDocument()
+    expect(submittedPayload).toEqual({
+      providerId: 'provider-2',
+      serviceId: 'general-consultation',
+      date: todayIsoDate,
+      time: selectableTime,
+      customer: {
+        name: 'Jane Doe',
+        phone: '+1 555 111 222',
+        email: 'jane@example.com',
+      },
+    })
   })
 
   it('submits booking and shows confirmation on 201', async () => {
@@ -206,33 +234,41 @@ describe('PublicBookingWidget', () => {
 
     await user.type(screen.getByLabelText(/name/i), 'Jane Doe')
     await user.type(screen.getByLabelText(/phone/i), '+1 555 111 222')
+    await user.type(screen.getByLabelText(/email/i), 'jane@example.com')
     await user.click(screen.getByRole('button', { name: /submit booking request/i }))
 
-    expect(await screen.findByRole('heading', { name: /booking confirmed/i })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: /booking requested/i })).toBeInTheDocument()
   })
 
   it('handles 409 conflict by showing friendly message and returning to slot selection', async () => {
+    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {})
     const user = userEvent.setup()
     renderWidget()
     await goToContactStep(user)
 
     await user.type(screen.getByLabelText(/name/i), 'Conflict Case')
     await user.type(screen.getByLabelText(/phone/i), '+1 555 333 444')
+    await user.type(screen.getByLabelText(/email/i), 'conflict@example.com')
     await user.click(screen.getByRole('button', { name: /submit booking request/i }))
 
     expect(await screen.findByText(/slot no longer available/i)).toBeInTheDocument()
     expect(await screen.findByRole('heading', { name: /select day & time/i })).toBeInTheDocument()
+    expect(alertSpy).toHaveBeenCalledWith('This slot is no longer available. Please select a different time.')
   })
 
   it('shows generic message on 500 booking error', async () => {
+    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {})
     const user = userEvent.setup()
     renderWidget()
     await goToContactStep(user)
 
     await user.type(screen.getByLabelText(/name/i), 'Server Error')
     await user.type(screen.getByLabelText(/phone/i), '+1 555 666 777')
+    await user.type(screen.getByLabelText(/email/i), 'server@example.com')
     await user.click(screen.getByRole('button', { name: /submit booking request/i }))
 
-    expect(await screen.findByText(/try again later/i)).toBeInTheDocument()
+    await waitFor(() => {
+      expect(alertSpy).toHaveBeenCalledWith('Unable to submit booking right now. Please try again.')
+    })
   })
 })

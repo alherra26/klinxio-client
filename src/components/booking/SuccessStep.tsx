@@ -14,9 +14,10 @@ export function SuccessStep({ service, appointment, providerName, patientDetails
     <section className="space-y-8">
       <header className="space-y-3">
         <p className="text-xs font-semibold tracking-[0.18em] text-emerald-700 uppercase">Step 5 of 5</p>
-        <h2 className="text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl">Booking Confirmed</h2>
+        <h2 className="text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl">Booking Requested</h2>
         <p className="max-w-2xl text-base leading-7 text-slate-600">
-          Thank you {patientDetails.name}. Your appointment has been successfully confirmed.
+          Thank you {patientDetails.name}. We have received your request. Our team will review the schedule and contact
+          you shortly to confirm your appointment.
         </p>
       </header>
 

@@ -99,8 +99,8 @@ export const handlers = [
     await delay(100)
 
     const payload = (await request.json()) as {
-      customer?: { name?: string; phone?: string }
-      startTime?: string
+      customer?: { name?: string; phone?: string; email?: string }
+      time?: string
     }
 
     if (payload.customer?.name === 'Conflict Case') {
@@ -111,7 +111,7 @@ export const handlers = [
       return HttpResponse.json({ message: 'Internal server error' }, { status: 500 })
     }
 
-    if (!payload.customer?.name || !payload.customer?.phone || !payload.startTime) {
+    if (!payload.customer?.name || !payload.customer?.phone || !payload.customer?.email || !payload.time) {
       return HttpResponse.json({ message: 'Invalid payload' }, { status: 400 })
     }
 

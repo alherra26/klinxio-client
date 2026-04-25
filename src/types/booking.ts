@@ -71,4 +71,5 @@ export interface CalendarDay {
 export interface PatientDetails {
   name: string
   phone: string
+  email: string
 }

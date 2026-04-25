@@ -22,6 +22,7 @@ import { WeeklyCalendarStep } from './booking/WeeklyCalendarStep'
 const EMPTY_PATIENT_DETAILS: PatientDetails = {
   name: '',
   phone: '',
+  email: '',
 }
 
 const STEP_COUNT = 5
@@ -290,61 +291,102 @@ export function PublicBookingWidget() {
   )
 
   const submitBooking = useCallback(
+    async (
+      bookingData: {
+        providerId: string
+        serviceId: string
+        date: string
+        time: string
+        customer: {
+          name: string
+          phone: string
+          email: string
+        }
+      },
+      tenantIdValue: string,
+    ) => {
+      const url = `https://hdv0hm1fn6.execute-api.eu-north-1.amazonaws.com/dev/public/appointments/${tenantIdValue}`
+
+      try {
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+          },
+          body: JSON.stringify(bookingData),
+        })
+
+        if (!response.ok) {
+          const errorData = (await response.json().catch(() => ({}))) as { error?: string }
+          console.error('Backend Error:', errorData)
+          throw new Error(errorData.error || `HTTP Error: ${response.status}`)
+        }
+
+        const successData = await response.json()
+        return successData
+      } catch (error) {
+        console.error('Network or Submission Error:', error)
+        throw error
+      }
+    },
+    [],
+  )
+
+  const submitPatientDetails = useCallback(
     async (contact: PatientDetails) => {
       setIsSubmittingBooking(true)
       setBookingError(null)
       setSlotConflictMessage(null)
 
       try {
-        const baseUrl = import.meta.env.VITE_API_URL
-        if (!baseUrl || !tenantId || !selectedService || !selectedAppointment) {
+        if (!tenantId || !selectedService || !selectedAppointment) {
           throw new Error('Booking flow is not fully initialized.')
         }
 
-        const response = await fetch(`${baseUrl}/public/appointments/${encodeURIComponent(tenantId)}`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
+        await submitBooking(
+          {
             providerId: selectedAppointment.assignedProviderId,
             serviceId: selectedService.id,
             date: selectedAppointment.date,
-            startTime: selectedAppointment.time,
+            time: selectedAppointment.time,
             customer: {
               name: contact.name,
               phone: contact.phone,
+              email: contact.email,
             },
-          }),
-        })
+          },
+          tenantId,
+        )
 
-        if (response.status === 201) {
-          setPatientDetails(contact)
-          setCurrentStep(4)
-          return
-        }
+        setPatientDetails(contact)
+        setCurrentStep(4)
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Unable to submit booking.'
+        const isConflictError = errorMessage.includes('409')
 
-        if (response.status === 409) {
+        if (isConflictError) {
           setSelectedAppointment(null)
           setCurrentStep(2)
           setSlotConflictMessage('Slot no longer available. Please choose another time.')
-          await loadAvailability(availabilityStartDate, selectedProviderId)
-          return
+          window.alert('This slot is no longer available. Please select a different time.')
+          void loadAvailability(availabilityStartDate, selectedProviderId)
+        } else {
+          window.alert('Unable to submit booking right now. Please try again.')
         }
-
-        if (response.status === 400 || response.status >= 500) {
-          setBookingError('Try again later.')
-          return
-        }
-
-        setBookingError('Try again later.')
-      } catch {
-        setBookingError('Try again later.')
       } finally {
         setIsSubmittingBooking(false)
       }
     },
-    [availabilityStartDate, loadAvailability, selectedAppointment, selectedProviderId, selectedService, tenantId],
+    [
+      availabilityStartDate,
+      loadAvailability,
+      selectedAppointment,
+      selectedProviderId,
+      selectedService,
+      submitBooking,
+      tenantId,
+    ],
   )
 
   useEffect(() => {
@@ -403,7 +445,7 @@ export function PublicBookingWidget() {
   }
 
   const handlePatientDetailsSubmit = (values: PatientDetails) => {
-    void submitBooking(values)
+    void submitPatientDetails(values)
   }
 
   const handleRestart = () => {
